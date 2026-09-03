@@ -1,0 +1,25 @@
+# Virtual environments
+ml/
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables & credentials
+.env
+.env.*
+!.env.example
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# macOS system files
+.DS_Store
+ml/
+.env
