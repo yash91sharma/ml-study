@@ -63,66 +63,110 @@ Let's take an example of translating "Je suis étudiant" to "I am a student". Su
 <br><br>
 
 
+### Stage 1: Encoding Stage (Source Sentence: "Je suis étudiant")
+The Bidirectional Encoder outputs an annotation vector for each source word ($d=2$):
+
+$$
+h_1 = \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} \text{ ("Je" — Subject)}, \quad
+h_2 = \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} \text{ ("suis" — Verb)}, \quad
+h_3 = \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \text{ ("étudiant" — Noun)}
+$$
+
+### Stage 2: Initialization & Step 4 Decoder Cell
+1. The decoder's initial hidden state is computed from the encoder (purple vector):
+
+$$
+h_{\text{init}} = \begin{bmatrix} 0.70 \\ 0.10 \end{bmatrix}
+$$
+
+2. The first decoder cell takes $h_{\text{init}}$ and `<END>` token to produce decoder state $h_4$ (purple vector):
+
+$$
+h_4 = \text{RNN}_{\text{dec}}(h_{\text{init}}, \text{<END>}) = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix}
+$$
+
+### Stage 3: The Attention Box ($\text{Attention}_4$)
+**Learned parameters:**
+
+$$
+W_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad U_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad v_a = \begin{bmatrix} 2.0 \\ -1.0 \end{bmatrix}
+$$
+
+**(A) Compute Energy Scores:** $e_{4,j} = v_a^T \tanh(W_a h_4 + U_a h_j)$
+
+* **For word 1 ("Je"):**
+$$
+W_a h_4 + U_a h_1 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}
+$$
+$$
+\tanh\left(\begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}\right) \approx \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix}
+$$
+$$
+e_{4,1} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794}
+$$
+
+* **For word 2 ("suis"):**
+$$
+W_a h_4 + U_a h_2 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}
+$$
+$$
+\tanh\left(\begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}\right) \approx \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix}
+$$
+$$
+e_{4,2} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808}
+$$
+
+* **For word 3 ("étudiant"):**
+$$
+W_a h_4 + U_a h_3 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}
+$$
+$$
+\tanh\left(\begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}\right) \approx \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix}
+$$
+$$
+e_{4,3} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471}
+$$
+
+**(B) Softmax Normalization (Small pink bar in attention):**
+
+$$
+\alpha_{4,j} = \frac{\exp(e_{4,j})}{\sum_{k=1}^3 \exp(e_{4,k})}
+$$
+
 $$
 \begin{aligned}
-% ====================================================================
-% STAGE 1: ENCODING STAGE
-% ====================================================================
-&\underline{\textbf{STAGE 1: ENCODING STAGE (Source Sentence: "Je suis étudiant")}} \\
-&\text{The Bidirectional Encoder outputs an annotation vector for each source word (dim } d=2\text{):} \\
-&\quad h_1 = \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} \text{ ("Je" — Subject)} \quad\quad
-      h_2 = \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} \text{ ("suis" — Verb)} \quad\quad
-      h_3 = \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \text{ ("étudiant" — Noun)} \\[1.5em]
-
-% ====================================================================
-% STAGE 2: INITIALIZATION & STEP 4 DECODER
-% ====================================================================
-&\underline{\textbf{STAGE 2: INITIALIZATION \& STEP 4 DECODER CELL}} \\
-&\text{1. The decoder's initial hidden state is computed from the encoder (purple vector):} \\
-&\quad h_{\text{init}} = \begin{bmatrix} 0.70 \\ 0.10 \end{bmatrix} \\[0.6em]
-&\text{2. The first decoder cell takes } h_{\text{init}} \text{ and } \text{<END>} \text{ token to produce decoder state } h_4 \text{ (purple vector):} \\
-&\quad h_4 = \text{RNN}_{\text{dec}}(h_{\text{init}}, \text{<END>}) = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} \quad \\[1.5em]
-
-% ====================================================================
-% STAGE 3: ATTENTION_4 MECHANISM
-% ====================================================================
-&\underline{\textbf{STAGE 3: THE ATTENTION BOX (Attention}_4\textbf{)}} \\
-&\text{Learned params: } W_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad U_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad v_a = \begin{bmatrix} 2.0 \\ -1.0 \end{bmatrix} \\[0.8em]
-&\textbf{(A) Compute Energy Scores } e_{4,j} = v_a^T \tanh(W_a h_4 + U_a h_j): \\[0.4em]
-&\quad \bullet\ \text{For word 1 ("Je"):} \\
-&\quad\quad W_a h_4 + U_a h_1 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix} \\
-&\quad\quad \tanh\left(\begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}\right) \approx \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} \\
-&\quad\quad e_{4,1} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794} \\[0.6em]
-&\quad \bullet\ \text{For word 2 ("suis"):} \\
-&\quad\quad W_a h_4 + U_a h_2 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix} \\
-&\quad\quad \tanh\left(\begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}\right) \approx \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} \\
-&\quad\quad e_{4,2} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808} \\[0.6em]
-&\quad \bullet\ \text{For word 3 ("étudiant"):} \\
-&\quad\quad W_a h_4 + U_a h_3 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix} \\
-&\quad\quad \tanh\left(\begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}\right) \approx \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} \\
-&\quad\quad e_{4,3} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471} \\[0.8em]
-
-&\textbf{(B) Softmax Normalization (Small pink bar in attention): } \alpha_{4,j} = \frac{\exp(e_{4,j})}{\sum_{k=1}^3 \exp(e_{4,k})} \\[0.4em]
-&\quad \exp(e_{4,1}) = \exp(1.794) \approx 6.013 \\
-&\quad \exp(e_{4,2}) = \exp(0.808) \approx 2.243 \\
-&\quad \exp(e_{4,3}) = \exp(1.471) \approx 4.354 \\
-&\quad \text{Denominator Sum} = 6.013 + 2.243 + 4.354 = 12.610 \\[0.6em]
-&\quad \alpha_{4,1} = \frac{6.013}{12.610} \approx \mathbf{0.477} \quad (\textbf{47.7\% attention to "Je"} \rightarrow \text{Dark column in diagram}) \\
-&\quad \alpha_{4,2} = \frac{2.243}{12.610} \approx \mathbf{0.178} \quad (\textbf{17.8\% attention to "suis"} \rightarrow \text{Faded column in diagram}) \\
-&\quad \alpha_{4,3} = \frac{4.354}{12.610} \approx \mathbf{0.345} \quad (\textbf{34.5\% attention to "étudiant"} \rightarrow \text{Medium column in diagram}) \\[1.5em]
-
-% ====================================================================
-% STAGE 4: CONTEXT VECTOR C_4 & PREDICTION
-% ====================================================================
-&\underline{\textbf{STAGE 4: COMPUTING CONTEXT VECTOR } c_4 \textbf{ AND EMITTING "I"}} \\[0.4em]
-&\text{1. Weighted sum of encoder vectors produces Context Vector } c_4 \text{ (blue vector):} \\
-&\quad c_4 = \sum_{j=1}^3 \alpha_{4,j} h_j = 0.477 \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} + 0.178 \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} + 0.345 \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \\
-&\quad c_4 = \begin{bmatrix} 0.4293 \\ 0.0477 \end{bmatrix} + \begin{bmatrix} 0.0178 \\ 0.1602 \end{bmatrix} + \begin{bmatrix} 0.1035 \\ 0.0690 \end{bmatrix} = \mathbf{\begin{bmatrix} 0.551 \\ 0.277 \end{bmatrix}} \\[0.8em]
-&\text{2. Concatenate context vector } c_4 \text{ and decoder state } h_4 \text{ (side-by-side blue and purple vector):} \\
-&\quad [c_4 \,;\, h_4] = \begin{bmatrix} 0.551 \\ 0.277 \\ 0.900 \\ 0.000 \end{bmatrix} \\[0.8em]
-&\text{3. Feed through output layer (orange capsule) to predict the target word:} \\
-&\quad \hat{y}_4 = \text{Softmax}\left( W_o [c_4 \,;\, h_4] \right) \implies P(\text{"I"}) = \mathbf{0.94} \implies \mathbf{\text{Output: "I"}}
+\exp(e_{4,1}) &= \exp(1.794) \approx 6.013 \\
+\exp(e_{4,2}) &= \exp(0.808) \approx 2.243 \\
+\exp(e_{4,3}) &= \exp(1.471) \approx 4.354 \\
+\text{Denominator Sum} &= 6.013 + 2.243 + 4.354 = 12.610
 \end{aligned}
+$$
+
+$$
+\begin{aligned}
+\alpha_{4,1} &= \frac{6.013}{12.610} \approx \mathbf{0.477} \quad (\textbf{47.7\% attention to "Je"} \rightarrow \text{Dark column in diagram}) \\
+\alpha_{4,2} &= \frac{2.243}{12.610} \approx \mathbf{0.178} \quad (\textbf{17.8\% attention to "suis"} \rightarrow \text{Faded column in diagram}) \\
+\alpha_{4,3} &= \frac{4.354}{12.610} \approx \mathbf{0.345} \quad (\textbf{34.5\% attention to "étudiant"} \rightarrow \text{Medium column in diagram})
+\end{aligned}
+$$
+
+### Stage 4: Computing Context Vector $c_4$ & Prediction
+1. Weighted sum of encoder vectors produces Context Vector $c_4$ (blue vector):
+
+$$
+c_4 = \sum_{j=1}^3 \alpha_{4,j} h_j = 0.477 \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} + 0.178 \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} + 0.345 \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \mathbf{\begin{bmatrix} 0.551 \\ 0.277 \end{bmatrix}}
+$$
+
+2. Concatenate context vector $c_4$ and decoder state $h_4$ (side-by-side blue and purple vector):
+
+$$
+[c_4 \,;\, h_4] = \begin{bmatrix} 0.551 \\ 0.277 \\ 0.900 \\ 0.000 \end{bmatrix}
+$$
+
+3. Feed through output layer (orange capsule) to predict the target word:
+
+$$
+\hat{y}_4 = \text{Softmax}\left( W_o [c_4 \,;\, h_4] \right) \implies P(\text{"I"}) = \mathbf{0.94} \implies \mathbf{\text{Output: "I"}}
 $$
 
 ## Attention evolution
@@ -160,64 +204,82 @@ In pure dot-product attention, there are NO extra attention parameters to train 
   <figcaption align="center"><i>Decoder-attention dot product example</i></figcaption>
 </figure>
 
-<br><br>
+### Stage 1: Encoding Stage (Orange blocks on the left: $h_1, h_2, h_3$)
+The encoder processes "Je suis étudiant" and outputs three annotation vectors ($d=2$):
 
-Now the mathematical represenation:
+$$
+h_1 = \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} \text{ ("Je" — Subject)}, \quad
+h_2 = \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} \text{ ("suis" — Verb)}, \quad
+h_3 = \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \text{ ("étudiant" — Noun)}
+$$
+
+### Stage 2: Decoder Cell (Step 4) Input & State $h_4$ (Purple vector)
+1. The initial hidden state $h_{\text{init}}$ (purple) and `<END>` token (green) enter the decoder circle:
+
+$$
+h_4 = \text{RNN}_{\text{dec}}(h_{\text{init}}, \text{<END>}) = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} \quad (\text{"Looking for a Subject to start sentence"})
+$$
+
+### Stage 3: The $\text{Attention}_4\text{ Process}$ Box (Dotted outline in diagram)
+Notice: No feedforward weights ($W_a, U_a, v_a$) exist! Only pure dot-products at the $\odot$ nodes.
+
+**(A) Direct Dot Products at the $\odot$ connection nodes ($e_{4,j} = h_4 \cdot h_j$):**
+
+* **Node $(h_4 \cdot h_1)$ for "Je":**
+$$
+e_{4,1} = h_4^T h_1 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = (0.90 \times 0.90) + (0.00 \times 0.10) = \mathbf{0.810}
+$$
+
+* **Node $(h_4 \cdot h_2)$ for "suis":**
+$$
+e_{4,2} = h_4^T h_2 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = (0.90 \times 0.10) + (0.00 \times 0.90) = \mathbf{0.090}
+$$
+
+* **Node $(h_4 \cdot h_3)$ for "étudiant":**
+$$
+e_{4,3} = h_4^T h_3 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = (0.90 \times 0.30) + (0.00 \times 0.20) = \mathbf{0.270}
+$$
+
+**(B) Softmax Normalization (The vertical pink boxes labeled "Softmax"):**
+
+$$
+\alpha_{4,j} = \frac{\exp(e_{4,j})}{\sum_{k=1}^3 \exp(e_{4,k})}
+$$
+
 $$
 \begin{aligned}
-% ====================================================================
-% STAGE 1: ENCODING STAGE
-% ====================================================================
-&\underline{\textbf{STAGE 1: ENCODING STAGE (Orange blocks on the left: } h_1, h_2, h_3\textbf{)}} \\
-&\text{The encoder processes "Je suis étudiant" and outputs three annotation vectors (dim } d=2\text{):} \\
-&\quad h_1 = \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} \text{ ("Je" — Subject)}, \quad
-      h_2 = \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} \text{ ("suis" — Verb)}, \quad
-      h_3 = \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \text{ ("étudiant" — Noun)} \\[1.5em]
-
-% ====================================================================
-% STAGE 2: DECODER CELL (STEP 4)
-% ====================================================================
-&\underline{\textbf{STAGE 2: DECODER CELL INPUT \& STATE } h_4\textbf{ (Purple vector)}} \\
-&\text{1. The initial hidden state } h_{\text{init}} \text{ (purple) and } \text{<END>} \text{ token (green) enter the decoder circle:} \\
-&\quad h_4 = \text{RNN}_{\text{dec}}(h_{\text{init}}, \text{<END>}) = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} \quad (\text{"Looking for a Subject to start sentence"}) \\[1.5em]
-
-% ====================================================================
-% STAGE 3: ATTENTION_4 PROCESS BOX
-% ====================================================================
-&\underline{\textbf{STAGE 3: THE } \text{Attention}_4\text{ Process BOX (Dotted outline in diagram)}} \\
-&\text{Notice: No feedforward weights } (W_a, U_a, v_a) \text{ exist! Only pure dot-products at the } \odot \text{ nodes:} \\[0.8em]
-
-&\textbf{(A) Direct Dot Products at the } \odot \text{ connection nodes } (h_4 \cdot h_j): \\[0.4em]
-&\quad \bullet\ \text{Node } (h_4 \cdot h_1) \text{ for "Je":} \\
-&\quad\quad e_{4,1} = h_4^T h_1 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = (0.90 \times 0.90) + (0.00 \times 0.10) = \mathbf{0.810} \\[0.5em]
-&\quad \bullet\ \text{Node } (h_4 \cdot h_2) \text{ for "suis":} \\
-&\quad\quad e_{4,2} = h_4^T h_2 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = (0.90 \times 0.10) + (0.00 \times 0.90) = \mathbf{0.090} \\[0.5em]
-&\quad \bullet\ \text{Node } (h_4 \cdot h_3) \text{ for "étudiant":} \\
-&\quad\quad e_{4,3} = h_4^T h_3 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = (0.90 \times 0.30) + (0.00 \times 0.20) = \mathbf{0.270} \\[0.8em]
-
-&\textbf{(B) Softmax Normalization (The vertical ping boxes labeled "Softmax"): } \alpha_{4,j} = \frac{\exp(e_{4,j})}{\sum_{k=1}^3 \exp(e_{4,k})} \\[0.4em]
-&\quad \exp(e_{4,1}) = \exp(0.810) \approx 2.248 \\
-&\quad \exp(e_{4,2}) = \exp(0.090) \approx 1.094 \\
-&\quad \exp(e_{4,3}) = \exp(0.270) \approx 1.310 \\
-&\quad \text{Denominator Sum} = 2.248 + 1.094 + 1.310 = 4.652 \\[0.6em]
-&\quad \alpha_{4,1} = \frac{2.248}{4.652} \approx \mathbf{0.483} \quad (\textbf{48.3\% attention to "Je"} \rightarrow \text{Top cell in Softmax column}) \\
-&\quad \alpha_{4,2} = \frac{1.094}{4.652} \approx \mathbf{0.235} \quad (\textbf{23.5\% attention to "suis"} \rightarrow \text{Middle cell in Softmax column}) \\
-&\quad \alpha_{4,3} = \frac{1.310}{4.652} \approx \mathbf{0.282} \quad (\textbf{28.2\% attention to "étudiant"} \rightarrow \text{Bottom cell in Softmax column}) \\[1.5em]
-
-% ====================================================================
-% STAGE 4: CONTEXT VECTOR C_4 AND CONCATENATION
-% ====================================================================
-&\underline{\textbf{STAGE 4: COMPUTING } C_4 \textbf{ (Blue block) \& PREDICTING "I" (Pink block)}} \\[0.4em]
-&\text{1. Weighted sum at the } \times \text{ nodes produces Context Vector } C_4 \text{ (the blue horizontal block):} \\
-&\quad C_4 = \sum_{j=1}^3 \alpha_{4,j} h_j = 0.483 \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} + 0.235 \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} + 0.282 \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \\
-&\quad C_4 = \begin{bmatrix} 0.4347 \\ 0.0483 \end{bmatrix} + \begin{bmatrix} 0.0235 \\ 0.2115 \end{bmatrix} + \begin{bmatrix} 0.0846 \\ 0.0564 \end{bmatrix} = \mathbf{\begin{bmatrix} 0.543 \\ 0.316 \end{bmatrix}} \\[1.0em]
-
-&\text{2. Concatenate context vector } C_4 \text{ and decoder state } h_4 \text{ (side-by-side blue and purple bar):} \\
-&\quad [C_4 \,;\, h_4] = \begin{bmatrix} 0.543 \\ 0.316 \\ 0.900 \\ 0.000 \end{bmatrix} \\[1.0em]
-
-&\text{3. Project to vocabulary logits to emit the target word (pink/magenta blocks at top):} \\
-&\quad \hat{y}_4 = \text{Softmax}\left( W_o [C_4 \,;\, h_4] \right) \implies P(\text{"I"}) = \mathbf{0.95} \implies \mathbf{\text{Output: "I"}}
+\exp(e_{4,1}) &= \exp(0.810) \approx 2.248 \\
+\exp(e_{4,2}) &= \exp(0.090) \approx 1.094 \\
+\exp(e_{4,3}) &= \exp(0.270) \approx 1.310 \\
+\text{Denominator Sum} &= 2.248 + 1.094 + 1.310 = 4.652
 \end{aligned}
+$$
+
+$$
+\begin{aligned}
+\alpha_{4,1} &= \frac{2.248}{4.652} \approx \mathbf{0.483} \quad (\textbf{48.3\% attention to "Je"} \rightarrow \text{Top cell in Softmax column}) \\
+\alpha_{4,2} &= \frac{1.094}{4.652} \approx \mathbf{0.235} \quad (\textbf{23.5\% attention to "suis"} \rightarrow \text{Middle cell in Softmax column}) \\
+\alpha_{4,3} &= \frac{1.310}{4.652} \approx \mathbf{0.282} \quad (\textbf{28.2\% attention to "étudiant"} \rightarrow \text{Bottom cell in Softmax column})
+\end{aligned}
+$$
+
+### Stage 4: Computing $C_4$ (Blue block) & Predicting "I" (Pink block)
+1. Weighted sum at the $\times$ nodes produces Context Vector $C_4$ (the blue horizontal block):
+
+$$
+C_4 = \sum_{j=1}^3 \alpha_{4,j} h_j = 0.483 \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} + 0.235 \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} + 0.282 \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \mathbf{\begin{bmatrix} 0.543 \\ 0.316 \end{bmatrix}}
+$$
+
+2. Concatenate context vector $C_4$ and decoder state $h_4$ (side-by-side blue and purple bar):
+
+$$
+[C_4 \,;\, h_4] = \begin{bmatrix} 0.543 \\ 0.316 \\ 0.900 \\ 0.000 \end{bmatrix}
+$$
+
+3. Project to vocabulary logits to emit the target word (pink/magenta blocks at top):
+
+$$
+\hat{y}_4 = \text{Softmax}\left( W_o [C_4 \,;\, h_4] \right) \implies P(\text{"I"}) = \mathbf{0.95} \implies \mathbf{\text{Output: "I"}}
 $$
 
 So here we can see, the improvement is in the "soft-search" scoring. First, we do not need to learn and additional neural network. Second, while infering a dot-product (on GPU) is blazing fast.
@@ -240,7 +302,7 @@ Decoder queries: ──────────────► [ h_14, h_15, h_1
 
 The above explanation is for global attention. WHich means for every single word generated, we look at all $\{h_1, h_2, ... ,h_n\}$. This is compute intensive, but model never misses anything in theory.
 
-Local attention has a small window, say $D=2$. Model first predicts an `aligned position` in the source sentence, whic roughly corresponds to where the generation word is. Which means to generate 10th word, we would only look at $\{h_8, h_9, h_10, h_11, h_12\}$.
+Local attention has a small window, say $D=2$. Model first predicts an `aligned position` in the source sentence, whic roughly corresponds to where the generation word is. Which means to generate 10th word, we would only look at $\{h_8, h_9, h_{10}, h_{11}, h_{12}\}$.
 
 However, gloabal attention won because modern GPUs are very efficient in matric multiplcation. And this penalty was not big enough.
 
