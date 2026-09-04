@@ -40,7 +40,7 @@ Target:                           "Le"                     "chat"               
   2) Vanishing memory: If encoder processes a long input, the important of the 1st word while processing 50th word will be significantly diluted.
 
 But why don't we make the context vector very large? Then both the above bottlenecks might be solved?
-  - Still vanishing memory: At each encoder step, encoder will process the long 10k vector. So for a long sentence, say 60 words, the vector has been processed 60 times. At that point, it is hard to find out the exact information/context for the initial words, after 60 gradient steps. Information get's diluted, scrambled at each step, 60 times.
+  - Still vanishing memory: At each encoder step, encoder will process the long 10k vector. So for a long sentence, say 60 words, the vector has been processed 60 times. At that point, it is hard to find out the exact information/context for the initial words, after 60 recurrent processing steps. Information gets diluted, scrambled at each step, 60 times.
   - O(1) vs. O(T). Significant compute requirements. Wasted resources for smaller inputs.
   - Needle in the haystack problem for decoder: How does decoder learn to process the 10k vector to understand what was the context while processing word 5?
 
@@ -179,10 +179,11 @@ A dot product of two vectors measure how well they align: $A \cdot B = \|A\| \|B
   - 0 if they are perpendicular
   - min negative score if they are opposite
 
-In pure dot-product attention, there is no extra NN to train at all, but we do need a learned matrix. The model simply trains the encoder and decoder so that words with matching concepts naturally align in vector space. As long as they are the same dimensions. This is where `GPU` comes in!
+
+In pure dot-product attention, there is no extra parameter to train for attention scoring itself, the model simply relies on encoder and decoder states aligning directly in vector space. The model simply trains the encoder and decoder so that words with matching concepts naturally align in vector space. As long as they are the same dimensions. This is where `GPU` comes in!
 
 ```
-1. BAHADANAU (2014) - Additive / Feedforward (Slow, Many Weights):
+1. BAHDANAU (2014) - Additive / Feedforward (Slow, Many Weights):
    h_4 ──► [ W_a ] ──┐
                      ├──► (+) ──► [ tanh ] ──► [ v_a^T ] ──► Score e_4,j
    h_j ──► [ U_a ] ──┘
@@ -308,8 +309,8 @@ However, global attention won because modern GPUs are very efficient in matrix m
 
 ## Cross attention vs. self attention
 
-  - Cross attention is what we saw above. The attention vector come from encoder, but generation happens in decoder (consumer of attention). This is normally when we have different modalities of data. Like translation models, diffusion models, speech to text etc.
-  - Self attention is when attention consumer is the same as attention producer. Example: decoder only models like modern LLMs, encoder only models like BERT, or encoder only block in an encoder-decoder model. There is no modality transformation, just next token prediction given the current tokens. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
+  - Cross attention is what we saw above. The attention vectors come from encoder, but generation happens in decoder (consumer of attention). This is normally when we have different modalities/dimensions of data. Like translation models, diffusion models, speech to text etc.
+  - Self attention is when attention consumer is the same as attention producer. Example: decoder only models like modern LLMs, encoder only models like BERT, or encoder only block in an encoder-decoder model. There is no modality/dimension transformation. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
 
 ## Assumptions
 
@@ -323,9 +324,9 @@ In our math shown above, we chose the vector length $d=2$. This makes it easy to
 
  `d` decides many things like model expressive power, compute and memory requirements, training data requirements, overfitting/underfitting tendencies, dot product stability etc, just like other model params.
 
- ### <END> token
+ ### END token
 
- The example is unusual, and picked up from the reference blog and used for simplicity. Normally models are fed a `<start>` or `<bos>` (beginning of sentence) token to trigger decoding. 
+ The example is unusual because decoder starts with the `<END>` token, and picked up from the reference blog and used for simplicity. Normally models are fed a `<start>` or `<bos>` (beginning of sentence) token to trigger decoding. 
 
 
  ### Attention/decoding order
@@ -334,7 +335,7 @@ In our math shown above, we chose the vector length $d=2$. This makes it easy to
 
  The 2015 paper changed it to: `Previous State → [RNN Cell] → Current State → [Attention Mechanism]→ Context Vector → Predict Word`.
 
- Again, I continued with the 2015 paper's order since that is in the bog and I picked up that diagram in my notes. So essentially the two diagrams are using 2015 paper's order, but comparing the math between 2014 and 2015 paper, for simplicity.
+ Again, I continued with the 2015 paper's order since that is in the blog and I picked up that diagram in my notes. So essentially the two diagrams are using 2015 paper's order, but comparing the math between 2014 and 2015 paper, for simplicity.
 
 ## References
  - [Neural Machine Translation by Jointly Learning to Align and Translate](https://arxiv.org/abs/1409.0473) - Attention proposal paper
