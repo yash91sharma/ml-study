@@ -17,7 +17,7 @@ Intuition:
 
 Taking standard seq2seq encoder-decoder model (RNN), for translation:
 
-  1) Encoder processed each word in the input, one-by-one and genarating hidden state $h_t$ for each word. $h_t = \text{Encoder}(x_t, h_{t-1})$ shows that each hidden state is dependent on the current word being processed $x_t$ and the previous hidden state $h_{t-1}$.
+  1) Encoder processed each word in the input, one-by-one and generating hidden state $h_t$ for each word. $h_t = \text{Encoder}(x_t, h_{t-1})$ shows that each hidden state is dependent on the current word being processed $x_t$ and the previous hidden state $h_{t-1}$.
   2) After the last input word is processed, the hidden state is passed into the decoder as a "context" vector of fixed length.
   3) The decoder is then initialized with this single vector $c$, which is the last hidden state from the encoder. And it generates words one by one: $s_i = \text{Decoder}(y_{i-1}, s_{i-1}, c)$. Where $c$ is the last hidden state from the encoder, $s_{i-1}$ is the previous hidden state, and $y_{i-1}$ is the previous generated word. So intuitively:
      - $y_{i-1}$: What was just said?
@@ -40,20 +40,20 @@ Target:                           "Le"                     "chat"               
   2) Vanishing memory: If encoder processes a long input, the important of the 1st word while processing 50th word will be significantly diluted.
 
 But why don't we make the context vector very large? Then both the above bottlenecks might be solved?
-  - Still vanishing memory: At each encoder step, encoder will process the long 10k vector. So for a long sentence, say 60 works, the vector has been processed 60 times. At that point, it is hard to find out the exact information/context for the initial words, after 60 gradient steps. Information get's diluted, scrambled at each step, 60 times.
+  - Still vanishing memory: At each encoder step, encoder will process the long 10k vector. So for a long sentence, say 60 words, the vector has been processed 60 times. At that point, it is hard to find out the exact information/context for the initial words, after 60 gradient steps. Information get's diluted, scrambled at each step, 60 times.
   - O(1) vs. O(T). Significant compute requirements. Wasted resources for smaller inputs.
   - Needle in the haystack problem for decoder: How does decoder learn to process the 10k vector to understand what was the context while processing word 5?
 
 So the problem is architecture of the way "context" is structured, not capacity of the context.
 
-And attention passes a vector of vectors from encoder to decoder. So say for 10 words (1024 each), our attention matric would be 10240 numbers (~10k). However attention changes how that information is structured (information soup vs structured). And consumer of attention (decoder in our case) can decide what to use, when. This is where the soft-search (mentioned above) comes in.
+And attention passes a vector of vectors from encoder to decoder. So say for 10 words (1024 each), our attention matrix would be 10240 numbers (~10k). However attention changes how that information is structured (information soup vs structured). And consumer of attention (decoder in our case) can decide what to use, when. This is where the soft-search (mentioned above) comes in.
 
 ## Attention explanation
   - Instead of one vector of fixed length, keep a vector of vectors $\{h_1, h_2, \dots, h_{T_x}\}$ which is given to decoder
   - At each step, decoder can soft-search, decide what is important and decoder.
 
 
-Let's take an example of translating "Je suis étudiant" to "I am a student". Suppose the hidden representation size is $d=2$. Intuitively each dimention in $d$ would represent some concept which the model learns:
+Let's take an example of translating "Je suis étudiant" to "I am a student". Suppose the hidden representation size is $d=2$. Intuitively each dimension in $d$ would represent some concept which the model learns:
 
 <figure style="width: 100%; margin: 0;">
   <img src="decoder_attention_01_nn.png" style="width: 100%; height: auto;">
@@ -282,7 +282,7 @@ $$
 \hat{y}_4 = \text{Softmax}\left( W_o [C_4 \,;\, h_4] \right) \implies P(\text{"I"}) = \mathbf{0.95} \implies \mathbf{\text{Output: "I"}}
 $$
 
-So here we can see, the improvement is in the "soft-search" scoring. First, we do not need to learn and additional neural network. Second, while infering a dot-product (on GPU) is blazing fast.
+So here we can see, the improvement is in the "soft-search" scoring. First, we do not need to learn an additional neural network. Second, while inferring a dot-product (on GPU) is blazing fast.
 
 The softmax part remains the same.
 
@@ -302,14 +302,14 @@ Decoder queries: ──────────────► [ h_14, h_15, h_1
 
 The above explanation is for global attention. WHich means for every single word generated, we look at all $\{h_1, h_2, ... ,h_n\}$. This is compute intensive, but model never misses anything in theory.
 
-Local attention has a small window, say $D=2$. Model first predicts an `aligned position` in the source sentence, whic roughly corresponds to where the generation word is. Which means to generate 10th word, we would only look at $\{h_8, h_9, h_{10}, h_{11}, h_{12}\}$.
+Local attention has a small window, say $D=2$. Model first predicts an `aligned position` in the source sentence, which roughly corresponds to where the generation word is. Which means to generate 10th word, we would only look at $\{h_8, h_9, h_{10}, h_{11}, h_{12}\}$.
 
-However, gloabal attention won because modern GPUs are very efficient in matric multiplcation. And this penalty was not big enough.
+However, global attention won because modern GPUs are very efficient in matrix multiplcation. And this penalty was not big enough.
 
 ## Cross attention vs. self attention
 
   - Cross attention is what we saw above. The attention vector come from encoder, but generation happens in decoder (consumer of attention). This is normally when we have different modalities of data. Like translation models, diffusion models, speech to text etc.
-  - Self attention is when attention consumer or the attention producer. This is almost always decoder only models like modern LLMs. There is no modality tranformation, just next token prediction given the current tokens. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
+  - Self attention is when attention consumer is the same as attention producer. Example: decoder only models like modern LLMs, encoder only models like BERT, or encoder only block in an encoder-decoder model. There is no modality tranformation, just next token prediction given the current tokens. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
 
 ## Assumptions
 
@@ -322,6 +322,10 @@ In our math shown above, we chose the vector length $d=2$. This makes it easy to
  - GPT-2 varied from 768 to 1600 based on model size
 
  `d` decides many things like model expressive power, compute and memory requirements, training data requirements, overfitting/underfitting tendencies, dot product stability etc, just like other model params.
+
+ ### <END> token
+
+ The example is unusual, and picked up from the reference blog and used for simplicity. Normally models are fed a `<start>` or `<bos>` (beginning of sentence) token to trigger decoding. 
 
 ## References
  - [Neural Machine Translation by Jointly Learning to Align and Translate](https://arxiv.org/abs/1409.0473) - Attention proposal paper
