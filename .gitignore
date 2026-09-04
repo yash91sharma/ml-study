@@ -4,6 +4,7 @@ venv/
 .venv/
 env/
 ENV/
+.tmp_render/
 
 # Environment variables & credentials
 .env
