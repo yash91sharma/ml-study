@@ -94,37 +94,34 @@ $$
 
 **(A) Compute Energy Scores:** $e_{4,j} = v_a^T \tanh(W_a h_4 + U_a h_j)$
 
-* **For word 1 ("Je"):**
+**For word 1 ("Je"):**
+
 $$
-W_a h_4 + U_a h_1 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}
-$$
-$$
-\tanh\left(\begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}\right) \approx \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix}
-$$
-$$
-e_{4,1} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794}
+\begin{aligned}
+W_a h_4 + U_a h_1 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix} \\
+\tanh\left(\begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} \\
+e_{4,1} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794}
+\end{aligned}
 $$
 
-* **For word 2 ("suis"):**
+**For word 2 ("suis"):**
+
 $$
-W_a h_4 + U_a h_2 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}
-$$
-$$
-\tanh\left(\begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}\right) \approx \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix}
-$$
-$$
-e_{4,2} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808}
+\begin{aligned}
+W_a h_4 + U_a h_2 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix} \\
+\tanh\left(\begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} \\
+e_{4,2} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808}
+\end{aligned}
 $$
 
-* **For word 3 ("étudiant"):**
+**For word 3 ("étudiant"):**
+
 $$
-W_a h_4 + U_a h_3 = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}
-$$
-$$
-\tanh\left(\begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}\right) \approx \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix}
-$$
-$$
-e_{4,3} = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471}
+\begin{aligned}
+W_a h_4 + U_a h_3 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix} \\
+\tanh\left(\begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} \\
+e_{4,3} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471}
+\end{aligned}
 $$
 
 **(B) Softmax Normalization (Small pink bar in attention):**
@@ -225,17 +222,20 @@ Notice: No feedforward weights ($W_a, U_a, v_a$) exist! Only pure dot-products a
 
 **(A) Direct Dot Products at the $\odot$ connection nodes ($e_{4,j} = h_4 \cdot h_j$):**
 
-* **Node $(h_4 \cdot h_1)$ for "Je":**
+**Node $(h_4 \cdot h_1)$ for "Je":**
+
 $$
 e_{4,1} = h_4^T h_1 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = (0.90 \times 0.90) + (0.00 \times 0.10) = \mathbf{0.810}
 $$
 
-* **Node $(h_4 \cdot h_2)$ for "suis":**
+**Node $(h_4 \cdot h_2)$ for "suis":**
+
 $$
 e_{4,2} = h_4^T h_2 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = (0.90 \times 0.10) + (0.00 \times 0.90) = \mathbf{0.090}
 $$
 
-* **Node $(h_4 \cdot h_3)$ for "étudiant":**
+**Node $(h_4 \cdot h_3)$ for "étudiant":**
+
 $$
 e_{4,3} = h_4^T h_3 = \begin{bmatrix} 0.90 & 0.00 \end{bmatrix} \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = (0.90 \times 0.30) + (0.00 \times 0.20) = \mathbf{0.270}
 $$
