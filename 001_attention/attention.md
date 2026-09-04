@@ -179,7 +179,7 @@ A dot product of two vectors measure how well they align: $A \cdot B = \|A\| \|B
   - 0 if they are perpendicular
   - min negative score if they are opposite
 
-In pure dot-product attention, there are NO extra attention parameters to train at all. The model simply trains the encoder and decoder so that words with matching concepts naturally align in vector space. As long as they are the same dimensions. This is where `GPU` comes in!
+In pure dot-product attention, there is no extra NN to train at all, but we do need a learned matrix. The model simply trains the encoder and decoder so that words with matching concepts naturally align in vector space. As long as they are the same dimensions. This is where `GPU` comes in!
 
 ```
 1. BAHADANAU (2014) - Additive / Feedforward (Slow, Many Weights):
@@ -193,7 +193,7 @@ In pure dot-product attention, there are NO extra attention parameters to train 
    h_4 ──┐
          ├──► [ Dot Product: h_4 · h_j ] ──────────────────► Score e_4,j
    h_j ──┘
-   (No weights! Just vector multiplication. GPUs do this in 1 clock cycle.)
+   (Zero weights for scoring! Relies on vector similarity; highly parallelizable on GPUs.)
 ```
 
 <figure style="width: 100%; margin: 0;">
@@ -300,16 +300,16 @@ Decoder queries: ──────────────► [ h_14, h_15, h_1
                                    Center p_t
 ```
 
-The above explanation is for global attention. WHich means for every single word generated, we look at all $\{h_1, h_2, ... ,h_n\}$. This is compute intensive, but model never misses anything in theory.
+The above explanation is for global attention. Which means for every single word generated, we look at all $\{h_1, h_2, ... ,h_n\}$. This is compute intensive, but model never misses anything in theory.
 
 Local attention has a small window, say $D=2$. Model first predicts an `aligned position` in the source sentence, which roughly corresponds to where the generation word is. Which means to generate 10th word, we would only look at $\{h_8, h_9, h_{10}, h_{11}, h_{12}\}$.
 
-However, global attention won because modern GPUs are very efficient in matrix multiplcation. And this penalty was not big enough.
+However, global attention won because modern GPUs are very efficient in matrix multiplication. And this penalty was not big enough.
 
 ## Cross attention vs. self attention
 
   - Cross attention is what we saw above. The attention vector come from encoder, but generation happens in decoder (consumer of attention). This is normally when we have different modalities of data. Like translation models, diffusion models, speech to text etc.
-  - Self attention is when attention consumer is the same as attention producer. Example: decoder only models like modern LLMs, encoder only models like BERT, or encoder only block in an encoder-decoder model. There is no modality tranformation, just next token prediction given the current tokens. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
+  - Self attention is when attention consumer is the same as attention producer. Example: decoder only models like modern LLMs, encoder only models like BERT, or encoder only block in an encoder-decoder model. There is no modality transformation, just next token prediction given the current tokens. Multi-modal LLMs would fall here too, assuming all modalities map into same token space.
 
 ## Assumptions
 
@@ -326,6 +326,15 @@ In our math shown above, we chose the vector length $d=2$. This makes it easy to
  ### <END> token
 
  The example is unusual, and picked up from the reference blog and used for simplicity. Normally models are fed a `<start>` or `<bos>` (beginning of sentence) token to trigger decoding. 
+
+
+ ### Attention/decoding order
+
+ The original 2014 paper has attention step before decoding. So the flow was: `Previous State → [Attention Mechanism] → Context Vector → [RNN Cell] → Current State → Predict Word`.
+
+ The 2015 paper changed it to: `Previous State → [RNN Cell] → Current State → [Attention Mechanism]→ Context Vector → Predict Word`.
+
+ Again, I continued with the 2015 paper's order since that is in the bog and I picked up that diagram in my notes. So essentially the two diagrams are using 2015 paper's order, but comparing the math between 2014 and 2015 paper, for simplicity.
 
 ## References
  - [Neural Machine Translation by Jointly Learning to Align and Translate](https://arxiv.org/abs/1409.0473) - Attention proposal paper
