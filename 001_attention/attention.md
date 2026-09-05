@@ -57,11 +57,17 @@ Let's take an example of translating "Je suis étudiant" to "I am a student". Su
 
 <figure style="width: 100%; margin: 0;">
   <img src="decoder_attention_01_nn.png" style="width: 100%; height: auto;">
-  <figcaption align="center"><i>Decoder-attention NN example from Jay Alammar's blog</i></figcaption>
+  <figcaption align="left"><i>Decoder-attention NN example from Jay Alammar's blog</i></figcaption>
 </figure>
 
 <br><br>
 
+<figure style="width: 100%; margin: 0;">
+  <img src="decoder_attention_01_nn_detailed.png" style="width: 100%; height: auto;">
+  <figcaption align="left"><i>Decoder-attention detailed</i></figcaption>
+</figure>
+
+<br><br>
 
 ### Stage 1: Encoding Stage (Source Sentence: "Je suis étudiant")
 The Bidirectional Encoder outputs an annotation vector for each source word ($d=2$):
@@ -92,15 +98,24 @@ $$
 W_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad U_a = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad v_a = \begin{bmatrix} 2.0 \\ -1.0 \end{bmatrix}
 $$
 
-**(A) Compute Energy Scores:** $e_{4,j} = v_a^T \tanh(W_a h_4 + U_a h_j)$
+**(A) Compute query & key equivalent projections:**
+
+1. The decoder query projection $W_a h_4$ (computed once and broadcast to each word via the purple query bus):
+
+$$
+W_a h_4 = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix} \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} = \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix}
+$$
+
+2. Compute Key Projections $U_a h_j$, sum with $W_a h_4$, apply $\tanh$, and project with $v_a^T$:
 
 **For word 1 ("Je"):**
 
 $$
 \begin{aligned}
+U_a h_1 &= \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix} \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} \\
 W_a h_4 + U_a h_1 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.90 \\ 0.10 \end{bmatrix} = \begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix} \\
 \tanh\left(\begin{bmatrix} 1.80 \\ 0.10 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} \\
-e_{4,1} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794}
+e_{4,1} &= v_a^T \tanh(W_a h_4 + U_a h_1) = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.947 \\ 0.100 \end{bmatrix} = 2.0(0.947) - 1.0(0.100) = \mathbf{1.794}
 \end{aligned}
 $$
 
@@ -108,9 +123,10 @@ $$
 
 $$
 \begin{aligned}
+U_a h_2 &= \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix} \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} \\
 W_a h_4 + U_a h_2 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.90 \end{bmatrix} = \begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix} \\
 \tanh\left(\begin{bmatrix} 1.00 \\ 0.90 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} \\
-e_{4,2} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808}
+e_{4,2} &= v_a^T \tanh(W_a h_4 + U_a h_2) = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.762 \\ 0.716 \end{bmatrix} = 2.0(0.762) - 1.0(0.716) = \mathbf{0.808}
 \end{aligned}
 $$
 
@@ -118,9 +134,10 @@ $$
 
 $$
 \begin{aligned}
+U_a h_3 &= \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix} \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} \\
 W_a h_4 + U_a h_3 &= \begin{bmatrix} 0.90 \\ 0.00 \end{bmatrix} + \begin{bmatrix} 0.30 \\ 0.20 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix} \\
 \tanh\left(\begin{bmatrix} 1.20 \\ 0.20 \end{bmatrix}\right) &\approx \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} \\
-e_{4,3} &= \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471}
+e_{4,3} &= v_a^T \tanh(W_a h_4 + U_a h_3) = \begin{bmatrix} 2.0 & -1.0 \end{bmatrix} \begin{bmatrix} 0.834 \\ 0.197 \end{bmatrix} = 2.0(0.834) - 1.0(0.197) = \mathbf{1.471}
 \end{aligned}
 $$
 
