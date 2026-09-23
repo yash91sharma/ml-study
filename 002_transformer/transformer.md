@@ -2,7 +2,7 @@
 
 - Before the transformers paper in 2017, sequence modeling was mainly RNNs, LSTMs etc. Often with attention, which was proposed in 2014.
 - They required processing each token at a time. And token $T_n$ cannot be processed until $T_{n-1}$ is processed. So the time complexity is $\mathcal{O}(N)$. This could be very expensive with longer inputs. And both training and inference are difficult to scale.
-- Transformers discarded recurrence and concolutions, and relied solely on attention to draw dependencies between tokens, inputs and outputs.
+- Transformers discarded recurrence and convolutions, and relied solely on attention to draw dependencies between tokens, inputs and outputs.
 - Modern GPUs can help here, processing math operations in parallel.
 - Additionally, attentions helps long distance communications. Token 1 can talk to token N in $\mathcal{O}(1)$. In seq2seq model, this is hard (see attentions.md)
 - However we can argue the transformer also has $N$ layers, which are sequential. But these don't depend on input length and that cost is fixed. So once we have a big enough compute ability, then the cost is fixed.
@@ -40,25 +40,21 @@ $$
   <img src="fig_01_self_attention.png" style="width: 100%; height: auto;">
 </figure>
 
-<br><br>
-
-Now, if we use matric multiplication on a GPU/NPU/TPU, we can do all of the above for all tokens in one go, shown below, where we assume we only have 2 tokens to process.
+Now, if we use matrix multiplication on a GPU/NPU/TPU, we can do all of the above for all tokens in one go, shown below, where we assume we only have 2 tokens to process.
 
 <figure style="width: 100%; margin: 0;">
   <img src="fig_02_matrix_attention.png" style="width: 100%; height: auto;">
 </figure>
 
-<br><br>
-
 - Above we see self-attention. Where $K$, $Q$, $V$, all come from the same inputs. This was used in encoders.
 - Decoders used two attention block:
     - First, self attention but masked. So here a token can only look back, not forward. This forces the auto-regressive nature. In above example, token for "thinking" will not be able to attend to token for "machines" (~infinity), but the other way works. So a token can only attend backwards.
-    - Second, self attention but the the $K$ is from decoder's inputs, while the $Q$ and $V$ is from encoder's last layer output.
+    - Second, cross attention, which is similar to self attention but the $Q$ is from decoder's inputs, while the $K$ and $V$ is from encoder's last layer output.
 
 
 ## Multi-head attention
 
-The transformer paper proposed multi-head attention, which means there are parallel attention heads running on the same input. The resultant matrices are concetenated and then multiplied by a learned matric to convert back to its original dimension.
+The transformer paper proposed multi-head attention, which means there are parallel attention heads running on the same input. The resultant matrices are concatenated and then multiplied by a learned matrix to convert back to its original dimension.
 
 <figure style="width: 100%; margin: 0;">
   <img src="fig_03_multi_head_attention.png" style="width: 100%; height: auto;">
@@ -99,7 +95,7 @@ $$\text{Output} = \mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))$$
 </figure>
 <br><br>
 
-Solves vanishing gradients: During training (back-propogation) if the errors are too small, the gradients would become extermely small (~0). Hence keeping the residual ($x+F(x)$) ensure that errors propogating backward are enough for early layers to receive significant values, in order to learn.
+Solves vanishing gradients: During training (back-propagation) if the errors are too small, the gradients would become extremely small (~0). Hence keeping the residual ($x+F(x)$) ensure that errors propagating backward are enough for early layers to receive significant values, in order to learn.
 
 $$\frac{d}{dx}(x) = 1$$
 
@@ -107,20 +103,36 @@ Hence because of residuals, we will always add +1.
 
  It’s not necessarily that the initial error is small, even if the final error is large, repeatedly multiplying derivatives across many deep layers (0.2×0.2×0.2…) causes the gradient to shrink to near zero (∼0) before it ever reaches early layers.
 
-<hr>
->Note: ToDo below
-
 ## Linear + Softmax
 
-- then a final layer
+Now we convert the matrix into the final output. Note that we only use a single vector from the produced matrix, which is the vector representing the last token "machines".
 
-- greedy decoding, beam search
-- explain beam N, what is the "error" there?
+<figure style="width: 100%; margin: 0;">
+  <img src="fig_06_final_linear_softmax.png" style="width: 100%; height: auto;">
+</figure>
 
-- normalization after each layer
-- positional encoding
-- tokenizer/embeddings trained separately
+**Stage 1**: Create raw logits
+  - Take the normalized vector for "machines" and multiply by the unembedding matrix $W$, across the models full vocabulary (6 in the above diagram).
+  - This basically generates raw logits, which is the likelihood of the next token.
 
-Source:
+**Stage 2**: Softmax
+  - Exponentiate and normalize each value. So they are all positive and sum to 1.
+
+**Stage 3**: Token selection
+  - Multiple ways to pick the next token (greedy search, beam search etc.)
+
+Beam search: Explore $B$ (beam width) possible candidates at each step. Original transformer proposed $B=4$. At each step, the lowest probability candidates are dropped, and only the top $B$ are kept and we proceed. This sometimes helps the model explore interesting possibilities.
+
+## Other assumptions
+- Positional encodings: The original transformer also *added* a positional encodings to the initial input before starting to process them. This helps the model understand the location of each token with respect to others.
+  - This is important because self attention is invariant to positions. Softmax would treat token 1 and token 10 exactly the same. "The dog bit the man" and "The man bit the dog" produce the exact same attention outputs.
+- Original transformer was proposed for translation task.
+- In the dot product attention, we divide by $\sqrt{d_k}$ to prevent vanishing gradients.
+  - When we feed huge values into softmax, the output is nearly 1.
+  - For such cases, derivative is almost 0. 
+  - Dividing scales the variance back to 1, keeping softmax values in the sensitive range.
+
+## References
+
  - [Attention is all you need](https://arxiv.org/abs/1706.03762)
  - [Jal Alammar's blog](https://jalammar.github.io/illustrated-transformer/)
